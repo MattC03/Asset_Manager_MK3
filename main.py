@@ -33,6 +33,7 @@ class User(db.Model, UserMixin):
     name = Column(String(255), unique=True, nullable=True)
     password = Column(String(255), nullable=False)
     power_value = Column(Integer, nullable=False)
+    change_password_needed = Column(Boolean)
 
 
 class Person(db.Model):
@@ -83,7 +84,8 @@ def index():
 
 
 @app.route('/register', methods=['GET', 'POST'])
-@admin_only
+# @login_required
+# @admin_only
 def register():
     form = forms.RegisterForm()
     if form.validate_on_submit():
@@ -97,7 +99,8 @@ def register():
         new_user.email = form.email.data
         new_user.password = generate_password_hash(form.password.data, method='pbkdf2:sha256', salt_length=8)
         new_user.name = form.name.data
-        new_user.role = "User"
+        new_user.power_value = 0
+        new_user.change_password_needed = True
         db.session.add(new_user)
         db.session.commit()
         login_user(new_user)
@@ -114,6 +117,8 @@ def login():
         if user is not None:
             if check_password_hash(user.password, form.password.data):
                 login_user(user)
+                if user.change_password_needed:
+                    return redirect(url_for("change_password"))
                 return redirect(url_for('index'))
             else:
                 flash("Incorrect password, please try again.")
@@ -122,6 +127,18 @@ def login():
             flash("The email is not recognized please try again or create an account.")
             return redirect(url_for("login", form=form))
     return render_template("login.html", form=form)
+
+
+@app.route('/change-password/', methods=['GET', 'POST'])
+def change_password():
+    form = forms.ChangePassword()
+    if form.validate_on_submit():
+        current_user.password = generate_password_hash(form.new_password.data, method='pbkdf2:sha256',
+                                                       salt_length=8)
+        current_user.change_password_needed = False
+        db.session.commit()
+        return redirect(url_for("index"))
+    return render_template("change-password.html", form=form)
 
 
 @app.route('/logout')
@@ -189,7 +206,10 @@ def new_asset():
 @login_required
 def edit_asset(asset_id):
     # Builds the form and find the asset in the database.
-    form = forms.EditAssetForm()
+    if current_user.power_level == 0:
+        form = forms.EditAssetFormAdmin()
+    else:
+        form = forms.EditAssetForm()
     form.assigned_to.choices = [f"{person.firstname} {person.lastname}" for person in db.session.query(Person).all()]
     asset_to_edit = db.session.query(Asset).filter_by(id=asset_id).first()
 
@@ -201,6 +221,11 @@ def edit_asset(asset_id):
         asset_to_edit.notes = form.notes.data
         asset_to_edit.decommissioned = form.decommissioned.data
         asset_to_edit.added_by = current_user.name
+        if current_user.power_level == 1:
+            asset_to_edit.asset_id = form.asset_id.data
+            asset_to_edit.serial_num = form.serial_num.data
+            asset_to_edit.device = form.device.data
+            asset_to_edit.product = form.product.data
         db.session.commit()
         flash(f"Asset # {asset_to_edit.asset_id} has been updated!")
         return redirect(url_for("index"))
