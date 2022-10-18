@@ -35,23 +35,35 @@
           <div>{{ form.asset_id.label }}</div>
           <div >{{ form.asset_id(class="form-control") }}</div>
       </div>
-          <div class="form-group">
+      <div class="form-group">
           <div>{{ form.serial_num.label }}</div>
           <div >{{ form.serial_num(class="form-control") }}</div>
       </div>
-          <div class="form-group">
-          <div>{{ form.assigned_to.label }}</div>
-          <div >{{ form.assigned_to(class="form-control") }}</div>
+      <div class="form-group">
+          <div>{{ form.location.label }}</div>
+          <div >{{ form.location(class="form-control") }}</div>
+      </div>
+      <div class="form-group">
+          <div>{{ form.department.label }}</div>
+          <div >{{ form.department(class="form-control") }}</div>
       </div>
       <div class="form-group">
           <div>{{ form.device.label }}</div>
           <div >{{ form.device(class="form-control") }}</div>
       </div>
       <div class="form-group">
-          <div>{{ form.product.label }}</div>
-          <div >{{ form.product(class="form-control") }}</div>
+          <div>{{ form.make_and_model.label }}</div>
+          <div >{{ form.make_and_model(class="form-control") }}</div>
       </div>
-        <div class="form-group">
+      <div class="form-group">
+          <div>{{ form.imei.label }}</div>
+          <div >{{ form.imei(class="form-control") }}</div>
+      </div>
+      <div class="form-group">
+          <div>{{ form.sim_number.label }}</div>
+          <div >{{ form.sim_number(class="form-control") }}</div>
+      </div>
+      <div class="form-group">
           <div>{{ form.notes.label }}</div>
           <div >{{ form.notes(class="form-control") }}</div>
       </div>
@@ -63,7 +75,6 @@
       <div>{{ form.submit(class="btn btn-primary") }}</div>
     </form>
   </div>
-
 </main>
 
 {% endblock %}

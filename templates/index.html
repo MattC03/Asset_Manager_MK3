@@ -48,18 +48,6 @@
         </div>
         <div class="col-md">
           <div class="card">
-            <a class='nav-link' href="{{url_for('new_user')}}">
-            <div class="card-body">
-              <h5 class="card-title">Add User</h5>
-              <h6 class="card-subtitle mb-2 text-muted">Click here to add a new user</h6>
-              <hr>
-              <p class="card-text"><i class="fa-solid fa-user fa-2xl"></i></p>
-            </div>
-            </a>
-          </div>
-        </div>
-        <div class="col-md">
-          <div class="card">
             <div class="card-body">
               <h5 class="card-title">Reports</h5>
               <h6 class="card-subtitle mb-2 text-muted">Click here to generate reports</h6>
@@ -77,13 +65,14 @@
       <thead>
         <tr>
           <th>Asset #</th>
-          <th>Assigned To</th>
+          <th>Location</th>
+          <th>Department</th>
           <th>Date Added</th>
           <th>Serial #</th>
           <th>Device</th>
           <th>Product</th>
-          <th>Decommissioned</th>
           <th>Analyst</th>
+          <th>Decommissioned</th>
           <th>Notes</th>
           <th></th>
           {% if current_user.power_value == 1 %}
@@ -95,13 +84,14 @@
       {% for asset in all_assets %}
           <tr>
             <td>{{ asset.asset_id }}</td>
-            <td>{{ asset.person.firstname}} {{ asset.person.lastname}}</td>
+            <td>{{ asset.location }}</td>
+            <td>{{ asset.department }}</td>
             <td>{{ asset.date_added }}</td>
             <td>{{ asset.serial_num }}</td>
             <td>{{ asset.device }}</td>
             <td>{{ asset.product }}</td>
-            <td>{{ asset.decommissioned }}</td>
             <td>{{ asset.added_by }}</td>
+            <td>{{ asset.decommissioned }}</td>
             <td>{{ asset.notes }}</td>
             <td><a href="{{ url_for('edit_asset', asset_id=asset.id)}}"><i class="fa-solid fa-pen"></i></a></td>
             {% if current_user.power_value == 1 %}

@@ -36,26 +36,20 @@ class User(db.Model, UserMixin):
     change_password_needed = Column(Boolean)
 
 
-class Person(db.Model):
-    id = Column(Integer, primary_key=True)
-    firstname = Column(String(250), nullable=False)
-    lastname = Column(String(250), nullable=False)
-    department = Column(String(250), nullable=False)
-    assets = db.relationship('Asset', backref='person', lazy=True)
-
-
 class Asset(db.Model):
     id = Column(Integer, primary_key=True)
-    person_id = db.Column(db.Integer, db.ForeignKey('person.id'),
-                          nullable=False)
     asset_id = Column(String(250), nullable=False, unique=True)
+    location = Column(String(250), nullable=False)
+    department = Column(String(250), nullable=False)
     date_added = Column(String(250), nullable=False)
     serial_num = Column(String(250), nullable=False, unique=True)
     device = Column(String(250), nullable=False)
-    product = Column(String(250), nullable=False)
+    make_and_model = Column(String(250), nullable=False)
     added_by = Column(String(250), nullable=False)
+    imei = Column(String(250), nullable=True, unique=True)
+    sim_number = Column(String(250), nullable=True, unique=True)
     notes = Column(Text, nullable=False)
-    decommissioned = Column(Boolean)
+    decommissioned = Column(Boolean, nullable=False)
 
 db.create_all()
 
@@ -91,8 +85,8 @@ def register():
     if form.validate_on_submit():
         # Checks to see if there is a user with that email already.
         if db.session.query(User).filter_by(email=form.email.data).first():
-            flash("You already have an account please sign in below.")
-            return redirect(url_for("login", form=forms.LoginForm()))
+            flash("Already an account with this email registered!")
+            return render_template("register.html", form=form)
 
         # Creates a new user from the form.
         new_user = User()
@@ -146,30 +140,12 @@ def logout():
     logout_user()
     return redirect(url_for('index'))
 
-@app.route("/new-user", methods=['GET', 'POST'])
-@login_required
-def new_user():
-    form = forms.CreateUserForm()
-    if form.validate_on_submit():
-        new_person = Person(
-            firstname=form.firstname.data,
-            lastname=form.lastname.data,
-            department=form.department.data,
-        )
-        db.session.add(new_person)
-        db.session.commit()
-        flash(f"User {form.firstname.data} has been created!")
-        return redirect(url_for("index"))
-    return render_template("new-user.html", form=form)
-
 # #### ASSET MANAGEMENT #####
 
 @app.route("/new-asset", methods=['GET', 'POST'])
 @login_required
 def new_asset():
     form = forms.CreateAssetForm()
-    # Create a list of choices for the person to assign item to.
-    form.assigned_to.choices = [f"{person.firstname} {person.lastname}" for person in db.session.query(Person).all()]
     # On a valid submit of the form.
     if form.validate_on_submit():
         # Make sure asset id is not already used.
@@ -178,15 +154,17 @@ def new_asset():
             if not db.session.query(Asset).filter_by(asset_id=form.serial_num.data).first():
                 # Make the asset and submit it to the database.
                 new_asset = Asset(
-                    person_id=db.session.query(Person).filter_by(firstname=form.assigned_to.data.split(" ")[0],
-                                                                 lastname=form.assigned_to.data.split(" ")[1]).first().id,
+                    location=form.location.data,
+                    department=form.department.data,
                     asset_id=form.asset_id.data,
-                    date_added=datetime.date.today().strftime("%B %d, %Y"),
+                    date_added=datetime.date.today().strftime("%d/%m/%Y"),
                     serial_num=form.serial_num.data,
                     device=form.device.data,
-                    product=form.product.data,
+                    make_and_model=form.make_and_model.data,
                     added_by=current_user.name,
                     notes=form.notes.data,
+                    imei=form.imei.data,
+                    sim_number=form.sim_number.data,
                     decommissioned=form.decommissioned.data,
                 )
                 db.session.add(new_asset)
@@ -205,27 +183,28 @@ def new_asset():
 @app.route("/edit-asset/<int:asset_id>", methods=['GET', 'POST'])
 @login_required
 def edit_asset(asset_id):
-    # Builds the form and find the asset in the database.
-    if current_user.power_level == 0:
+    # Builds the form and find the asset in the database. Loads a different form if the user is an admin.
+    if current_user.power_value == 1:
         form = forms.EditAssetFormAdmin()
     else:
         form = forms.EditAssetForm()
-    form.assigned_to.choices = [f"{person.firstname} {person.lastname}" for person in db.session.query(Person).all()]
     asset_to_edit = db.session.query(Asset).filter_by(id=asset_id).first()
 
     # Checks to see if the form is submitted and then does the edit on database.
-    if form.validate_on_submit() :
-        asset_to_edit.person_id = db.session.query(Person).filter_by(firstname=form.assigned_to.data.split(" ")[0],
-                                                                     lastname=form.assigned_to.data.split(" ")[
-                                                                         1]).first().id
+    if form.validate_on_submit():
+        asset_to_edit.location = form.location.data
+        asset_to_edit.department = form.department.data
         asset_to_edit.notes = form.notes.data
+        asset_to_edit.sim_number = form.sim_number.data
         asset_to_edit.decommissioned = form.decommissioned.data
         asset_to_edit.added_by = current_user.name
-        if current_user.power_level == 1:
+        asset_to_edit.date_added = datetime.date.today().strftime("%d/%m/%Y")
+        if current_user.power_value == 1:
             asset_to_edit.asset_id = form.asset_id.data
             asset_to_edit.serial_num = form.serial_num.data
             asset_to_edit.device = form.device.data
-            asset_to_edit.product = form.product.data
+            asset_to_edit.make_and_model = form.make_and_model.data
+            asset_to_edit.imei = form.imei.data
         db.session.commit()
         flash(f"Asset # {asset_to_edit.asset_id} has been updated!")
         return redirect(url_for("index"))
@@ -234,11 +213,14 @@ def edit_asset(asset_id):
     form.id.data = asset_id
     form.asset_id.data = asset_to_edit.asset_id
     form.serial_num.data = asset_to_edit.serial_num
-    form.assigned_to.data = f"{asset_to_edit.person.firstname} {asset_to_edit.person.lastname}"
+    form.location.data = asset_to_edit.location
+    form.department.data = asset_to_edit.department
     form.device.data = asset_to_edit.device
-    form.product.default = asset_to_edit.product
-    form.decommissioned.data = asset_to_edit.decommissioned
+    form.make_and_model.default = asset_to_edit.make_and_model
     form.notes.data = asset_to_edit.notes
+    form.imei.data = asset_to_edit.imei
+    form.sim_number.data = asset_to_edit.sim_number
+    form.decommissioned.data = asset_to_edit.decommissioned
 
     return render_template("edit-asset.html", form=form, asset_id=asset_id)
 
